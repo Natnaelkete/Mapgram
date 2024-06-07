@@ -1,3 +1,5 @@
+const multer = require("multer");
+
 const notFound = (req, res, next) => {
   const error = new Error(`Not Found - ${req.originalUrl}`);
   res.status(404);
@@ -13,11 +15,6 @@ const errorHandler = (err, req, res, next) => {
     message = "Resource not found";
     statusCode = 404;
   }
-
-  res.status(statusCode).json({
-    message,
-    stack: process.env.NODE_ENV === "production" ? "" : err.stack,
-  });
 
   // Handle Mongoose validation error
   if (err.name === "ValidationError") {
@@ -39,10 +36,16 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 401;
   }
 
-  // Handle Toke expired errors
-  if (err.name === "TokenExpiredError") {
-    message = "Token expired";
+  // Handle JWT errors
+  if (err.name === "JsonWebTokenError") {
+    message = "Invalid token";
     statusCode = 401;
+  }
+
+  // Handle generic TypeError (e.g., Cannot read properties of undefined)
+  if (err instanceof TypeError) {
+    message = "An unexpected error occurred";
+    statusCode = 500;
   }
 
   // Set default status code for other unhandled errors
@@ -55,4 +58,16 @@ const errorHandler = (err, req, res, next) => {
   });
 };
 
-module.exports = { notFound, errorHandler };
+// Multer error handler
+const multerErrorHandler = (err, req, res, next) => {
+  if (err instanceof multer.MulterError) {
+    // Handle Multer-specific errors
+    return res.status(400).json({ message: err.message });
+  } else if (err) {
+    // Handle other errors
+    return res.status(500).json({ message: "An unexpected error occurred" });
+  }
+  next();
+};
+
+module.exports = { notFound, errorHandler, multerErrorHandler };

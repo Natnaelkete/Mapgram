@@ -21,7 +21,7 @@ export async function logoutUsers() {
     `${endpoint}/users/logout`,
     {},
     {
-      withCredentials: true, // Ensure cookies are sent with the request
+      withCredentials: true,
     }
   );
   return data;
@@ -34,7 +34,7 @@ export async function getPins() {
 
 export async function createPins(newPin) {
   const { data } = await axios.post(`${endpoint}/pins`, newPin, {
-    withCredentials: true, // Ensure cookies are sent with the request
+    withCredentials: true,
   });
   return data;
 }
