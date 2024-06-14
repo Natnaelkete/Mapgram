@@ -2,33 +2,48 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 import {
   createPins,
+  follow,
+  followersPin,
+  followedPin,
   getPins,
   loginUsers,
   logoutUsers,
   registerUsers,
+  searchUsersName,
+  updatePins,
+  LikePin,
+  getUserByPin,
+  GetLikedPin,
+  GetLikesPin,
 } from "../services/apiServices";
 import { useAuth } from "./AuthProvider";
+import { useSearchParams } from "react-router-dom";
 
-function useMapin() {
+function useMapin(searchQuery) {
+  const [searchParams] = useSearchParams();
+  const user = searchParams.get("user");
+  const id = searchParams.get("id");
+
   const { setCredential, removeCredential } = useAuth();
   const queryClient = useQueryClient();
 
-  const { mutate: register, isLoading: isRegistering } = useMutation({
-    mutationFn: (newUser) => registerUsers(newUser),
+  const { mutate: register, isPending: isRegistering } = useMutation({
+    mutationFn: (formData) => registerUsers(formData),
     onSuccess: (data) => {
       toast.success("Welcome");
       queryClient.setQueryData(["register"], data);
+      setCredential(data);
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || "Registration failed");
     },
   });
 
-  const { mutate: login, isLoading: isLogging } = useMutation({
+  const { mutate: login, isPending: isLogging } = useMutation({
     mutationFn: (loggedUser) => loginUsers(loggedUser),
     onSuccess: (data) => {
       toast.success("Logged in successfully");
-      queryClient.setQueryData(["login"], data);
+      queryClient.invalidateQueries(["login"], data);
       setCredential(data);
     },
     onError: (err) => {
@@ -52,10 +67,11 @@ function useMapin() {
     queryKey: ["pins"],
     queryFn: getPins,
     onError: (err) => toast.error(err.response.data.message),
+    refetchOnWindowFocus: false,
   });
 
-  const { mutate: createPin, isLoading: isCreating } = useMutation({
-    mutationFn: (newPin) => createPins(newPin),
+  const { mutate: createPin, isPending: isCreating } = useMutation({
+    mutationFn: (formData) => createPins(formData),
     onSuccess: (data) => {
       queryClient.invalidateQueries(["pins"], data);
       toast.success("pin created successfully");
@@ -65,16 +81,106 @@ function useMapin() {
     },
   });
 
+  const { data: search, isLoading: isSearching } = useQuery({
+    queryKey: ["searchUser", searchQuery],
+    queryFn: () => searchUsersName(searchQuery),
+    onError: (err) => toast.error(err.response.data.message),
+    enabled: !!searchQuery,
+  });
+
+  const { mutate: followUser, isPending: isFollowing } = useMutation({
+    mutationFn: (userId) => follow(userId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries(["pins"], data);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || "Failed");
+    },
+  });
+
+  const { data: followersUserPin, isLoading: isGettingPin } = useQuery({
+    queryKey: ["followerPins"],
+    queryFn: followersPin,
+    onError: (err) => toast.error(err.response.data.message),
+  });
+
+  const { data: followedUserPin, isLoading: isGettingFollowedPin } = useQuery({
+    queryKey: ["followedPins"],
+    queryFn: followedPin,
+    onError: (err) => toast.error(err.response.data.message),
+  });
+
+  const { mutate: update, isPending: isUpdating } = useMutation({
+    mutationFn: (values) => updatePins(values),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries(["pins"], data);
+      toast.success("Pin updated successfully");
+    },
+    onError: (err) => toast.error(err.response.data.message),
+  });
+
+  const { mutate: Like } = useMutation({
+    mutationFn: ({ users, ids }) => LikePin(users, ids),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries(["likes"], data);
+    },
+    onError: (err) => toast.error(err.response.data.message),
+  });
+
+  const { data: likedPin, isLoading: gettingLikedPin } = useQuery({
+    queryKey: ["likedPins", id],
+    queryFn: () => GetLikedPin(id),
+    onError: (err) => toast.error(err.response.data.message),
+    enabled: !!id,
+  });
+
+  const { data: likesPin, isLoading: gettingLikesPin } = useQuery({
+    queryKey: ["likesPins", user, id],
+    queryFn: () => GetLikesPin(user, id),
+    onError: (err) => {
+      const errorMessage = err.response?.data?.message || "An error occurred";
+      toast.error(errorMessage);
+    },
+    enabled: !!id && !!user,
+  });
+
+  const { data: pinDetail, isLoading: isGettingPinDetail } = useQuery({
+    queryKey: ["pinsDetail", id, user],
+    queryFn: () => getUserByPin(user, id),
+    onError: (err) => {
+      const errorMessage = err.response?.data?.message || "An error occurred";
+      toast.error(errorMessage);
+    },
+    enabled: !!id && !!user,
+  });
+
   return {
     register,
     isRegistering,
     login,
     isLogging,
     logout,
+    followUser,
+    update,
+    isUpdating,
+    followersUserPin,
+    followedUserPin,
+    isGettingPin,
+    isGettingFollowedPin,
+    isFollowing,
     pins,
+    pinDetail,
+    isGettingPinDetail,
+    search,
+    isSearching,
     isLoading,
     createPin,
     isCreating,
+    Like,
+    likedPin,
+    gettingLikedPin,
+    likesPin,
+    gettingLikesPin,
   };
 }
 

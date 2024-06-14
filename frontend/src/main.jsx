@@ -19,7 +19,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <AuthProvider>
           <QueryClientProvider client={queryClient}>
             <App />
-            <ToastContainer position="top-left" className="z-50" />
+            <ToastContainer position="top-left" className="z-[900]" />
             <ReactQueryDevtools initialIsOpen={false} />
           </QueryClientProvider>
         </AuthProvider>

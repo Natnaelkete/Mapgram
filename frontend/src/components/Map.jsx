@@ -12,12 +12,15 @@ import Popups from "./Popup";
 
 function Map() {
   const { user } = useAuth();
-  const { pins } = useMapin();
+  const { pins: Pin, followedUserPin } = useMapin();
+
   const {
     customIcon1,
     customIcon2,
     mapPosition,
     getPosition,
+    handleClick,
+    handleUserIdClick,
     isLoadingPosition,
     geoLocationPosition,
   } = useMapContext();
@@ -27,7 +30,7 @@ function Map() {
       <div className="h-screen relative">
         {!geoLocationPosition && (
           <button
-            className="btn btn-success text-white absolute z-[1000] mx-[43%] mt-[40%]"
+            className="btn btn-success text-white absolute z-[1000] mx-[43%] mt-[40%] bottom-8"
             type="position"
             onClick={getPosition}
           >
@@ -47,15 +50,32 @@ function Map() {
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
-          {pins?.map((pin) => (
+          {Pin?.pins.map((pin) => (
             <Marker
-              key={pin.id}
+              key={pin._id}
               position={[pin.lat, pin.long]}
-              icon={pin.username === user?.username ? customIcon2 : customIcon1}
+              icon={Pin.username === user?.username ? customIcon2 : customIcon1}
+              eventHandlers={{
+                click: () => handleClick(pin._id, Pin._id),
+              }}
             >
               <Popups pin={pin} />
             </Marker>
           ))}
+          {followedUserPin?.map((pin) =>
+            pin.pins.map((p) => (
+              <Marker
+                key={p._id}
+                position={[p.lat, p.long]}
+                icon={customIcon1}
+                eventHandlers={{
+                  click: () => handleUserIdClick(p._id, pin._id),
+                }}
+              >
+                <Popups pin={p} />
+              </Marker>
+            ))
+          )}
 
           <Marker
             position={[mapPosition[0], mapPosition[1]]}

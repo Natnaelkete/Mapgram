@@ -14,6 +14,7 @@ const upload = multer({ storage });
 const createPin = asyncHandler(async (req, res) => {
   const { title, desc, rating, lat, long } = req.body;
   const imageUrls = req.files.map((file) => file.path);
+  console.log(req.user._id);
 
   try {
     const userPin = await UserPin.findOne({ user: req.user._id });
@@ -32,7 +33,7 @@ const createPin = asyncHandler(async (req, res) => {
     } else {
       const newUserPin = new UserPin({
         user: req.user._id,
-        user: req.user.username,
+        username: req.user.username,
         pins: [newPin],
       });
       await newUserPin.save();
@@ -53,7 +54,7 @@ const createPin = asyncHandler(async (req, res) => {
 const getPins = asyncHandler(async (req, res) => {
   try {
     const pins = await UserPin.findOne({ user: req.user._id });
-    res.status(200).json(pins.pins);
+    res.status(200).json(pins);
   } catch (error) {
     res.status(500);
     throw new Error("Cannot retrieve pins");
@@ -66,7 +67,7 @@ const getPins = asyncHandler(async (req, res) => {
 const getPinsById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // Find the UserPin document for the authenticated user
+  // Find the UserPin document for the authenticated users
   const userPin = await UserPin.findOne({ _id: id });
 
   if (!userPin) {
@@ -101,32 +102,26 @@ const updatePin = asyncHandler(async (req, res) => {
 //@route delete api/pins
 //@access Private
 const deletePin = asyncHandler(async (req, res) => {
-  const pins = await Pin.findById(req.body.id);
-  if (pins) {
-    const pin = await Pin.deleteOne({ _id: req.body.id });
-    res.json({ message: "Pin removed" });
-  } else {
-    res.status(400);
-    throw new Error("There is no pin with that id");
-  }
-});
+  const { id } = req.body;
 
-//@desc get Users
-//@route GET api/users/
-//@access Public
-const getUsersPin = asyncHandler(async (req, res) => {
-  const nameQuery = req.query.name
-    ? { username: { $regex: req.query.name, $options: "i" } }
-    : {};
+  const userPins = await UserPin.findOne({ user: req.user._id });
 
-  const users = await UserPin.findOne(nameQuery);
-
-  if (!users) {
+  if (!userPins) {
     res.status(404);
-    throw new Error("No user with this name");
-  } else {
-    res.status(200).json(users);
+    throw new Error("User pins not found");
   }
+
+  const pin = userPins.pins.id(id);
+  if (!pin) {
+    res.status(404);
+    throw new Error("Pin not found");
+  }
+
+  userPins.pins.pull(id);
+
+  await userPins.save();
+
+  res.json({ message: "Pin removed successfully" });
 });
 
 //@desc Delete pin images
@@ -174,6 +169,216 @@ const deleteImage = asyncHandler(async (req, res) => {
   }
 });
 
+//@desc Search Users
+//@route GET api/users/search
+//@access Public
+const searchUsers = asyncHandler(async (req, res) => {
+  const { username } = req.query;
+
+  const users = await UserPin.find({
+    username: new RegExp(username, "i"),
+  }).populate("user", "image");
+
+  if (!users.length) {
+    res.status(404);
+    throw new Error("No users with this name found");
+  }
+
+  res.status(200).json(users);
+});
+
+//@desc Follow / Unfollow User
+//@route GET api/pins/follow
+//@access Protected
+const following = asyncHandler(async (req, res) => {
+  const { userId } = req.body;
+  const userPin = await UserPin.findOne({ user: req.user._id });
+  const targetUserPin = await UserPin.findOne({ user: userId });
+
+  if (!userPin || !targetUserPin) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  const isFollowing = userPin.followed.includes(targetUserPin.user);
+
+  if (isFollowing) {
+    userPin.followed.pull(targetUserPin.user);
+    targetUserPin.followers.pull(userPin.user);
+    await userPin.save();
+    await targetUserPin.save();
+    res.json({ message: "Unfollowed User" });
+  } else {
+    userPin.followed.push(targetUserPin.user);
+    targetUserPin.followers.push(userPin.user);
+    await userPin.save();
+    await targetUserPin.save();
+    res.json({ message: "Followed user" });
+  }
+});
+
+//@desc get Followers users pin
+//@route GET api/pins/followers-pins
+//@access Protected
+const followersUsersPin = asyncHandler(async (req, res) => {
+  const userPin = await UserPin.findOne({ user: req.user._id }).populate(
+    "followers"
+  );
+
+  if (!userPin) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  const followedUsersPins = await UserPin.find({
+    user: { $in: userPin.followers },
+  });
+
+  res.json(
+    followedUsersPins.flatMap((followedUserPin) => followedUserPin.pins)
+  );
+});
+
+//@desc get Followed users pin
+//@route GET api/pins/followed-pins
+//@access Protected
+const followedUsersPin = asyncHandler(async (req, res) => {
+  try {
+    const userPin = await UserPin.findOne({ user: req.user._id }).populate(
+      "followed"
+    );
+
+    if (!userPin) {
+      res.status(404);
+      throw new Error("User not found");
+    }
+
+    const followedUsersPins = await UserPin.find({
+      user: { $in: userPin.followed },
+    }).populate("user", "image");
+
+    res.json(followedUsersPins.flatMap((followedUserPin) => followedUserPin));
+  } catch (error) {
+    res.status(500);
+    throw new Error(error.message);
+  }
+});
+
+// @desc Like/unlike posted pins
+// @route POST api/pins/likes
+// @access Private
+const LikePosts = asyncHandler(async (req, res) => {
+  const { user: targetedUserId, id: pinId } = req.body;
+
+  const userPin = await UserPin.findOne({ user: req.user._id });
+
+  const targetedUser = await UserPin.findById(targetedUserId);
+
+  if (!userPin || !targetedUser) {
+    res.status(404);
+    throw new Error("Unable to like");
+  }
+
+  const theRightPin = targetedUser.pins.id(pinId);
+
+  if (!theRightPin) {
+    res.status(404);
+    throw new Error("Pin not found");
+  }
+
+  const alreadyExist = theRightPin.likes.some((like) =>
+    like.equals(userPin.user)
+  );
+
+  if (alreadyExist) {
+    theRightPin.likes.pull(userPin.user);
+    userPin.liked.pull(theRightPin._id);
+    await targetedUser.save();
+    await userPin.save();
+    res.json({ message: "Unliked" });
+  } else {
+    theRightPin.likes.push(userPin.user);
+    userPin.liked.push(theRightPin._id);
+    await targetedUser.save();
+    await userPin.save();
+    res.json({ message: "Liked" });
+  }
+});
+
+// @desc getLiked pins
+// @route Get api/pins/liked-pin
+// @access Private
+const getLikedPin = asyncHandler(async (req, res) => {
+  const { id: pinId } = req.query;
+
+  const userPin = await UserPin.findOne({ user: req.user._id });
+
+  if (!userPin) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  const isLiked = userPin.liked.includes(pinId);
+  if (!isLiked) {
+    return res.json([]);
+  }
+
+  const likedUserPin = await UserPin.findOne({
+    "pins._id": pinId,
+  });
+
+  if (!likedUserPin) {
+    res.status(404);
+    throw new Error("Pin not found");
+  }
+
+  const exactPin = likedUserPin.pins.id(pinId);
+
+  res.json(exactPin._id);
+});
+
+// @desc getLikes pins
+// @route Get api/pins/likes-pin
+// @access Private
+const getLikesPin = asyncHandler(async (req, res) => {
+  const { user: targetedUserId, id: pinId } = req.query;
+
+  const targetedUser = await UserPin.findById(targetedUserId);
+
+  if (!targetedUser) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+
+  const theRightPin = targetedUser.pins.id(pinId);
+
+  if (!theRightPin) {
+    res.status(404);
+    throw new Error("Pin not found");
+  }
+
+  const likedUsers = theRightPin.likes;
+
+  res.json(likedUsers);
+});
+
+// @desc Find a user by pin id
+//@route GET api/pins/detail
+//@access Private
+const findUserByPinId = asyncHandler(async (req, res) => {
+  const { user, id: pinId } = req.query;
+
+  const targetedUser = await UserPin.findOne({ _id: user });
+
+  if (!targetedUser) {
+    res.status(404);
+    throw new Error("User is not found");
+  }
+
+  exactPin = targetedUser.pins.id(pinId);
+  res.status(200).json(exactPin);
+});
+
 module.exports = {
   createPin,
   upload,
@@ -181,6 +386,13 @@ module.exports = {
   getPinsById,
   deletePin,
   updatePin,
-  getUsersPin,
+  searchUsers,
+  following,
+  LikePosts,
+  getLikedPin,
+  getLikesPin,
+  followersUsersPin,
+  followedUsersPin,
+  findUserByPinId,
   deleteImage,
 };

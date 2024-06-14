@@ -1,36 +1,47 @@
 import { Link } from "react-router-dom";
 import useMapin from "./useMapin";
+import { useState } from "react";
 
 function RegisterModal() {
+  const [imagePreviews, setImagePreviews] = useState([]);
+  const [selectedImages, setSelectedImages] = useState([]);
   const { register, isRegistering } = useMapin();
+
+  function handleFileChange(e) {
+    const files = Array.from(e.target.files);
+    setSelectedImages(files);
+
+    const previewsArray = files.map((file) => URL.createObjectURL(file));
+    setImagePreviews(previewsArray);
+  }
 
   async function handleSubmit(e) {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    const newUser = {
-      username: formData.get("username"),
-      email: formData.get("email"),
-      password: formData.get("password"),
-    };
+    const formData = new FormData();
 
-    register(newUser);
+    formData.append("email", e.target.email.value);
+    formData.append("username", e.target.username.value);
+    formData.append("password", e.target.password.value);
+    formData.append("images", selectedImages[0]);
+
+    register(formData);
   }
 
   return (
     <div>
       {/* You can open the modal using document.getElementById('ID').showModal() method */}
       <Link
-        className="btn btn-sm  bg-blue-500 text-white hover:bg-blue-600 transition-colors mr-4 shadow-xl border-none"
+        className="btn btn-sm  bg-green-500 text-white hover:bg-green-600 transition-colors shadow-xl border-none"
         onClick={() => document.getElementById("my_modal_3").showModal()}
       >
         Sign up
       </Link>
-      <dialog id="my_modal_3" className="modal modal-bottom sm:modal-middle ">
+      <dialog id="my_modal_3" className="modal modal-middle ">
         <div
-          className="modal-box grid gap-5 p-10  h-[90%]  content-center"
+          className="modal-box grid gap-5 content-center"
           style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "none" }}
         >
-          <h1 className="text-center text-slate-300 text-3xl font-bold">
+          <h1 className="text-center text-slate-300 text-3xl font-bold w-[85%] md:w-full">
             Sign up
           </h1>
           <form method="dialog">
@@ -39,8 +50,28 @@ function RegisterModal() {
               ✕
             </button>
           </form>
-          <form onSubmit={handleSubmit}>
-            <label className="input input-bordered flex items-center gap-2 mb-5">
+          <form onSubmit={handleSubmit} className=" w-[85%] md:w-full">
+            <div className="mb-5 flex gap-4 items-center">
+              <img
+                src={imagePreviews[0]}
+                alt={`profile`}
+                className="rounded-full"
+                style={{ width: "70px", height: "70px", objectFit: "cover" }}
+              />
+              <div className="space-y-2">
+                <label htmlFor="image">Upload profile picture</label>
+                <input
+                  id="image"
+                  name="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="mb-5"
+                />
+              </div>
+            </div>
+            {/* <label htmlFor="images">Upload Image</label> */}
+            <label className="input  input-bordered flex items-center gap-2 mb-5">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 16 16"
@@ -92,9 +123,6 @@ function RegisterModal() {
             <button
               htmlFor="my_modal_3"
               disabled={isRegistering}
-              onClick={() => {
-                document.getElementById("my_modal_4").showModal();
-              }}
               className="btn text-white w-full bg-blue-500"
             >
               Sign up

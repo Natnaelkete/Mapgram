@@ -1,9 +1,20 @@
 import { useState } from "react";
 import DrawerForm from "../Ui/DrawerForm";
 import { Button, Drawer, Tabs } from "antd";
+import SearchUsers from "./SearchUsers";
+import { useSearchParams } from "react-router-dom";
+import useMapin from "./useMapin";
+import ImageGallery from "./ImageGallery";
+import Detail from "./Detail";
 
 const Drawers = () => {
   const [open, setOpen] = useState(false);
+  const [searchParams] = useSearchParams();
+  const user = searchParams.get("user");
+
+  const { pins: Pin } = useMapin();
+  const owner = Pin._id === user;
+
   const showDrawer = () => {
     setOpen(true);
   };
@@ -13,19 +24,10 @@ const Drawers = () => {
 
   return (
     <>
-      <Button type="primary" onClick={showDrawer} className="mt-4">
+      <Button type="primary" onClick={showDrawer} className="">
         Detail
       </Button>
-      <Drawer
-        width={620}
-        onClose={onClose}
-        open={open}
-        styles={{
-          body: {
-            paddingBottom: 80,
-          },
-        }}
-      >
+      <Drawer width={620} onClose={onClose} open={open}>
         <Tabs
           defaultActiveKey="1"
           centered
@@ -33,22 +35,22 @@ const Drawers = () => {
             {
               label: "Detail",
               key: "1",
-              children: "Tab 1",
+              children: <Detail />,
             },
             {
               label: "Images Gallery",
               key: "2",
-              children: "Tab 2",
+              children: <ImageGallery />,
             },
-            {
+            owner && {
               label: "Settings",
               key: "3",
               children: <DrawerForm />,
             },
-            {
+            owner && {
               label: "Chat History",
               key: "4",
-              children: "Coming soon",
+              children: <SearchUsers />,
             },
           ]}
         />

@@ -23,12 +23,12 @@ function LoginModal() {
       >
         Sign in
       </Link>
-      <dialog id="my_modal_4" className="modal sm:modal-middle ">
+      <dialog id="my_modal_4" className="modal ">
         <div
-          className="modal-box grid gap-5 w-[30%] h-[90%]  content-center"
+          className="modal-box grid gap-5   content-center"
           style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "none" }}
         >
-          <h1 className="text-center text-slate-300 text-3xl font-bold">
+          <h1 className="text-center text-slate-300 text-3xl font-bold w-[95%] md:w-full">
             Sign in
           </h1>
           <form method="dialog">
@@ -37,7 +37,7 @@ function LoginModal() {
               ✕
             </button>
           </form>
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} className="w-[95%] md:w-full">
             <label className="input input-bordered flex items-center gap-2 mb-5">
               <svg
                 xmlns="http://www.w3.org/2000/svg"

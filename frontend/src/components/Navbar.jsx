@@ -3,6 +3,7 @@ import LoginModal from "./LoginModal";
 import { useMapContext } from "./MapProvider";
 import RegisterModal from "./RegisterModal";
 import useMapin from "./useMapin";
+// import { Input } from "antd";
 
 const Navbar = () => {
   const { handleSubmit } = useMapContext();
@@ -13,7 +14,7 @@ const Navbar = () => {
     <>
       <form
         onSubmit={handleSubmit}
-        className="input input-bordered flex items-center gap-2 absolute z-[1000] mx-[41%] mt-[20px]"
+        className="hidden lg:flex input input-bordered items-center gap-2 absolute z-[1000] mx-[41%] mt-[20px]"
       >
         <input
           type="text"
@@ -21,6 +22,15 @@ const Navbar = () => {
           className="grow"
           placeholder="Search"
         />
+        {/* <Input.Search
+          className="hidden lg:block"
+          placeholder="search"
+          name="search"
+          enterButton="search"
+          style={{
+            width: 300,
+          }}
+        /> */}
         <svg
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 16 16"
@@ -40,17 +50,13 @@ const Navbar = () => {
         {user && (
           <button
             onClick={() => logout()}
-            className="text-blue-600 hover:text-blue-400 transition-colors  text-lg mr-4 underline"
+            className="text-blue-600 hover:text-blue-400 transition-colors  text-lg mr-1 underline"
           >
             Log out
           </button>
         )}
         {user ? (
-          <img
-            src="/path/to/your/avatar.png"
-            alt="Avatar"
-            className="h-8 w-8 rounded-full ml-4"
-          />
+          <img src={user.image} alt="Avatar" className="h-8 w-8 rounded-full" />
         ) : (
           <RegisterModal />
         )}

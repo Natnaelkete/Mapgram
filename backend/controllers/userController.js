@@ -12,8 +12,6 @@ const upload = multer({ storage: storageForProfile });
 //@access Public
 const registerUser = asyncHandler(async (req, res) => {
   const { username, email, password } = req.body;
-  const imageUrl = req.file ? req.file.path : null;
-  console.log(imageUrl);
 
   const userExists = await User.findOne({ email });
 
@@ -21,6 +19,7 @@ const registerUser = asyncHandler(async (req, res) => {
     res.status(400);
     throw new Error("User already exists");
   }
+  const imageUrl = req.file ? req.file.path : null;
 
   const user = await User.create({
     username: username,
@@ -57,6 +56,7 @@ const authUser = asyncHandler(async (req, res) => {
       _id: user._id,
       username: user.username,
       email: user.email,
+      image: user.image,
     });
   } else {
     res.status(401);

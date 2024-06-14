@@ -8,11 +8,31 @@ import L from "leaflet";
 import useGeolocation from "../hooks/useGeolocation";
 import useUrlPosition from "../hooks/useUrlPosition";
 import { getLatlng } from "../services/apiGeocoding";
+import { useSearchParams } from "react-router-dom";
 
 const mapContext = createContext();
 
 function MapProvider({ children }) {
   const [mapPosition, setMapPosition] = useState([9.0358287, 38.7524127]);
+  // eslint-disable-next-line
+  const [searchQuery, setSearchParams] = useSearchParams();
+
+  function handleClick(id, user) {
+    setSearchParams((prevParams) => {
+      const newParams = new URLSearchParams(prevParams);
+      newParams.set("id", id);
+      newParams.set("user", user);
+      return newParams;
+    });
+  }
+  function handleUserIdClick(id, user) {
+    setSearchParams((prevParams) => {
+      const newParams = new URLSearchParams(prevParams);
+      newParams.set("id", id);
+      newParams.set("user", user);
+      return newParams;
+    });
+  }
 
   const {
     getPosition,
@@ -67,6 +87,8 @@ function MapProvider({ children }) {
         mapPosition,
         handleSubmit,
         getPosition,
+        handleUserIdClick,
+        handleClick,
         isLoadingPosition,
         geoLocationPosition,
       }}
